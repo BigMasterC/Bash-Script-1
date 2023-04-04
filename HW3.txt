@@ -1,0 +1,38 @@
+#!/bin/bash
+
+if [ $# -eq 0 ]
+then
+  echo "Usage: $0 [container_name]"
+fi
+
+#shell argument for the name
+nameOfContainer=$1
+
+#Checking if the container of that name exists (below is the case in which the name of the container does NOT exist
+if [ "$(lxc-ls --running | grep -c "^$nameOfContainer$")" -eq 0 ]
+then
+  #Create a container with the specified name using the Ubuntu 20.04 template
+  sudo lxc-create -n $1 -t download -- -d ubuntu -r focal -a amd64
+
+  #Starting up the container
+
+  sudo lxc-start -n "$1"
+
+  #Create a new user inside the newly created container named "guest"
+
+  #setting the password to "this_is_a_bad_password"
+  sudo lxc-attach -n $1 -- bash -c "echo -e 'this_is_a_bad_password\nthis_is_a_bad_password\n\n' | sudo adduser guest"
+
+  sudo lxc-attach -n $1 -- sudo touch /home/guest/to-do.txt
+
+  #Create a file inside the "guest" user's home directory called "to-do.txt" and populate that file with the text "set better password"
+  sudo lxc-attach -n $1 -- bash -c "echo 'set better password' | sudo tee /home/guest/to-do.txt"
+
+else #"else" if the container already exists...
+
+  if [ "$(sudo lxc-info -n "$1" | grep -c "state:.*STOPPED")" -eq 1 ]
+  then
+    sudo lxc-destory -n "$1" #trashing/"destorying" the container
+  fi
+
+fi

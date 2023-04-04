@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [ $# -eq 0 ]
+then
+   echo "Usage: $0 <log_file_path>"
+   exit 1
+fi
+
+# Remove any carriage returns from the log file
+tr -d '\r' < $1 > temp.log
+
+# REALLLYY long code that extracts all the commands executed from the log file and prints them on separate lines
+grep -E '\[EXEC\] Noninteractive mode attacker command:|\[SHELL\] line from reader:' temp.log | awk '/\[EXEC\] Noninteractive mode attacker command:/{sub(/.*command: /,"",$0); print} / \[SHELL\] line from reader:/{sub(/^\s*\[[^]]*\]\s*line from reader:\s*/,"",$0); sub(/.*: /,"",$0); print}' | sed 's/\\n/\n/g'
+
+# Cleaning up temporary files =-)
+rm temp.log

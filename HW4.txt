@@ -1,0 +1,18 @@
+#!/bin/bash
+
+if [ $# -eq 0 ]; then
+   echo "Usage: $0 [target container]"
+   exit 1
+fi
+
+if ! sudo lxc-ls -f | grep -q "$1"; then
+    echo "$1 does not exist"
+    exit 1
+else
+    IPAdd=$(sudo lxc-ls -f | grep "$1" | colrm 1 38 | colrm 11)
+    if ping -c 4 "$IPAdd" >/dev/null 2>&1; then
+        echo "Container is online at: $(date -Iseconds)" # container responds to ALL four ping requests
+    else
+        echo "Container network check failed at: $(date -Iseconds)" # container does not respond to ALL four ping requests
+    fi
+fi | tee "$1_network.log"

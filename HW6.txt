@@ -1,0 +1,32 @@
+#!/bin/bash
+
+if [ $# -ne 2 ]
+then
+  echo "usage: $0 [source IP address] [destination IP address]"
+  exit 1
+fi
+
+sourceIP=$1
+destIP=$2
+
+# Checking if the rule already exists #"/dev/null 2>$1 discards any output made my the iptables command
+# if statement checks to see if the iptables -C command returns a non-zero exit status (meaning the rule does not exist)
+if ! sudo iptables -C INPUT -s "$sourceIP" -d "$destIP" -j DROP > /dev/null 2>&1; then
+    # Create the rule
+    sudo iptables -I INPUT -s "$sourceIP" -d "$destIP" -j DROP
+    #drops ("blocks") any incoming packets from the source IP address to the destination IP address
+    echo "Rule added: $sourceIP -> $destIP"
+else
+    echo "Rule already exists, do you want to delete? (y/n)"
+    read userResponse
+
+    if [[ $userResponse == "y" ]]
+    then
+      sudo iptables -D INPUT -s "$sourceIP" -d "$destIP" -j DROP
+      echo "Rule removed: $sourceIP -> $destIP"
+    else
+      echo "Rule not removed :c "
+    fi
+
+
+fi

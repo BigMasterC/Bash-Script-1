@@ -1,0 +1,53 @@
+#!/bin/bash
+
+
+if [ $# -lt 3 ]
+then
+  echo "Usage: please pass in THREE arguments: $0 [Name of the container] [external IP Address] [External Network netmask prefix]"
+exit 1
+fi
+
+
+if ! sudo lxc-ls -f | grep -q $1; then # "sudo lxc-ls -f" lists the contains and their Ip4 addresses
+
+  # "grep -q" runs the "grep" command in quiet mode allowing it to return "0" if the argument is found
+
+  echo "That container does not exist so I created one for you! :)"
+
+  #wrote this bc I genuinely will not be able to know if this worked without the echo
+
+  sudo lxc-create -n $1 -t download -- -d ubuntu -r focal -a amd64
+
+  # Creating the container
+
+  sudo lxc-start -n $1
+
+  sleep 5 && echo "Container started!" # Waiting for the container to start
+  IPAdd=$(sudo lxc-ls -f | grep "$1" | awk '{print $5}')
+  echo $IPAdd
+
+
+
+  sudo iptables --table nat --insert PREROUTING --source 0.0.0.0/0 --destination $2 --jump DNAT --to-destination $IPAdd
+
+  sudo iptables --table nat --insert POSTROUTING --source $IPAdd --destination 0.0.0.0/0 --jump SNAT --to-source $2
+  #QUESTION: Do I need "sudo" for this?
+
+  sudo ip addr add $2/$3 brd + dev eth1
+else # "else" if the container exists
+
+  IPAdd=$(sudo lxc-ls -f | grep "$1" | awk '{print $5}')
+  echo "$IPAdd"
+  echo "That already exists c: so, I'm adding deleting it :D!"
+  sudo iptables --table nat --delete PREROUTING --source 0.0.0.0/0 --destination $2 --jump DNAT --to-destination $IPAdd
+  sudo iptables --table nat --delete POSTROUTING --source $IPAdd --destination 0.0.0.0/0 --jump SNAT --to-source $2
+  sudo ip addr delete $2/$3 brd + dev eth1
+  if sudo lxc-info -n $1 | grep -q "RUNNING"; then
+    sudo lxc-stop -n $1
+    sudo lxc-destroy -n $1 # deleting the container
+    echo "Container deleted"
+  else
+    sudo lxc-destroy -n $1
+    echo "Container deleted"
+  fi
+fi
